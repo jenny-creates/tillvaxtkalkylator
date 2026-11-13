@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tillväxtkalkylatorn – räkna på din marknadsföring</title>
+<meta name="description" content="Tre enkla kalkylatorer för småföretagare: vad en ny kund får kosta, när en kampanj går ihop och hur många leads du behöver.">
+<style>
+  :root {
+    --bg: #f6f4ef;
+    --card: #ffffff;
+    --ink: #1c2321;
+    --muted: #5d6763;
+    --line: #dfdcd3;
+    --accent: #0f6e5c;
+    --accent-soft: #e2f1ed;
+    --warn: #a4490f;
+    --warn-soft: #fbeadd;
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141917;
+      --card: #1d2421;
+      --ink: #eef1ef;
+      --muted: #a3ada8;
+      --line: #323b37;
+      --accent: #5fd0b6;
+      --accent-soft: #1f3a34;
+      --warn: #f0a878;
+      --warn-soft: #3b2a1f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 32px 16px 56px; }
+  header h1 { font-size: clamp(1.7rem, 4vw, 2.4rem); margin: 0 0 8px; letter-spacing: -0.02em; }
+  header p { margin: 0; color: var(--muted); max-width: 60ch; }
+
+  .tabs { display: flex; gap: 8px; margin: 28px 0 16px; flex-wrap: wrap; }
+  .tabs button {
+    font: inherit; font-weight: 600; cursor: pointer;
+    padding: 10px 16px; border-radius: 999px;
+    border: 1px solid var(--line); background: transparent; color: var(--ink);
+  }
+  .tabs button[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .tabs button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  .panel { display: none; }
+  .panel.active { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 720px) { .panel.active { grid-template-columns: 1fr; } }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; }
+  .card h2 { margin: 0 0 4px; font-size: 1.15rem; }
+  .card .lead { margin: 0 0 18px; color: var(--muted); font-size: 0.95rem; }
+
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-weight: 600; font-size: 0.92rem; margin-bottom: 4px; }
+  .field .hint { display: block; font-weight: 400; color: var(--muted); font-size: 0.82rem; }
+  .input { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+  .input input {
+    flex: 1; min-width: 0; font: inherit; font-size: 1.05rem; color: var(--ink);
+    padding: 10px 12px; border: 0; background: transparent; border-radius: 10px;
+  }
+  .input span { padding: 0 12px; color: var(--muted); font-size: 0.9rem; white-space: nowrap; }
+
+  .result { background: var(--accent-soft); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+  .result .label { font-size: 0.85rem; color: var(--muted); }
+  .result .value { font-size: 1.9rem; font-weight: 700; letter-spacing: -0.02em; color: var(--accent); line-height: 1.2; }
+  .rows { margin: 0; padding: 0; list-style: none; }
+  .rows li { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 0.95rem; }
+  .rows li:last-child { border-bottom: 0; }
+  .rows b { white-space: nowrap; }
+  .note { margin: 14px 0 0; padding: 12px 14px; border-radius: 10px; font-size: 0.92rem; background: var(--accent-soft); }
+  .note.warn { background: var(--warn-soft); color: var(--warn); }
+
+  .funnel { margin: 6px 0 4px; }
+  .funnel .step { margin-bottom: 10px; }
+  .funnel .step .top { display: flex; justify-content: space-between; font-size: 0.92rem; }
+  .funnel .bar { height: 12px; border-radius: 6px; background: var(--accent); margin-top: 4px; min-width: 6px; }
+
+  footer { margin-top: 28px; color: var(--muted); font-size: 0.85rem; }
+  footer p { margin: 0 0 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Tillväxtkalkylatorn</h1>
+    <p>Tre snabba räknehjälpar för dig som driver ett litet företag och vill veta om din marknadsföring lönar sig. Fyll i dina egna siffror, resultatet uppdateras direkt.</p>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="Välj kalkylator">
+    <button role="tab" id="tab-kund" aria-controls="panel-kund" aria-selected="true">Vad får en ny kund kosta?</button>
+    <button role="tab" id="tab-kampanj" aria-controls="panel-kampanj" aria-selected="false">Går kampanjen ihop?</button>
+    <button role="tab" id="tab-leads" aria-controls="panel-leads" aria-selected="false">Hur många leads behöver jag?</button>
+  </div>
+
+  <!-- 1. Kundvärde -->
+  <section class="panel active" id="panel-kund" role="tabpanel" aria-labelledby="tab-kund">
+    <div class="card">
+      <h2>Dina siffror</h2>
+      <p class="lead">Räkna utan moms.</p>
+      <div class="field"><label for="k-order">Snittköp<span class="hint">Vad en kund betalar per köp eller per faktura</span></label>
+        <div class="input"><input id="k-order" type="number" inputmode="decimal" min="0" value="1500"><span>kr</span></div></div>
+      <div class="field"><label for="k-antal">Köp per år<span class="hint">Månadsabonnemang = 12</span></label>
+        <div class="input"><input id="k-antal" type="number" inputmode="decimal" min="0" step="0.5" value="4"><span>st</span></div></div>
+      <div class="field"><label for="k-ar">Hur länge stannar kunden?</label>
+        <div class="input"><input id="k-ar" type="number" inputmode="decimal" min="0" step="0.5" value="3"><span>år</span></div></div>
+      <div class="field"><label for="k-marginal">Bruttomarginal<span class="hint">Andel av priset som blir kvar efter varu- och leveranskostnad</span></label>
+        <div class="input"><input id="k-marginal" type="number" inputmode="decimal" min="0" max="100" value="60"><span>%</span></div></div>
+      <div class="field"><label for="k-ratio">Säkerhetsmarginal<span class="hint">Hur många gånger kostnaden kunden ska ge tillbaka. 3 är en vanlig tumregel.</span></label>
+        <div class="input"><input id="k-ratio" type="number" inputmode="decimal" min="1" step="0.5" value="3"><span>ggr</span></div></div>
+    </div>
+    <div class="card" aria-live="polite">
+      <h2>Resultat</h2>
+      <p class="lead">Så mycket kan du lägga på att vinna en ny kund.</p>
+      <div class="result"><div class="label">Rimlig kostnad per ny kund</div><div class="value" id="k-out-cac">–</div></div>
+      <ul class="rows">
+        <li><span>Kundens värde över tid (bruttovinst)</span><b id="k-out-ltv">–</b></li>
+        <li><span>Absolut tak, då går du jämnt upp</span><b id="k-out-max">–</b></li>
+        <li><span>Bruttovinst per kund och månad</span><b id="k-out-manad">–</b></li>
+        <li><span>Tid tills kunden betalat sin kostnad</span><b id="k-out-payback">–</b></li>
+      </ul>
+      <p class="note" id="k-note"></p>
+    </div>
+  </section>
+
+  <!-- 2. Kampanj -->
+  <section class="panel" id="panel-kampanj" role="tabpanel" aria-labelledby="tab-kampanj">
+    <div class="card">
+      <h2>Dina siffror</h2>
+      <p class="lead">Räkna utan moms. Här räknas bara kundens första köp.</p>
+      <div class="field"><label for="c-budget">Kampanjbudget<span class="hint">Annonser, material och annat du betalar för</span></label>
+        <div class="input"><input id="c-budget" type="number" inputmode="decimal" min="0" value="20000"><span>kr</span></div></div>
+      <div class="field"><label for="c-order">Snittköp per kund</label>
+        <div class="input"><input id="c-order" type="number" inputmode="decimal" min="0" value="2500"><span>kr</span></div></div>
+      <div class="field"><label for="c-marginal">Bruttomarginal</label>
+        <div class="input"><input id="c-marginal" type="number" inputmode="decimal" min="0" max="100" value="50"><span>%</span></div></div>
+      <div class="field"><label for="c-kunder">Kunder du tror att kampanjen ger<span class="hint">Din egen gissning, ändra och se vad som händer</span></label>
+        <div class="input"><input id="c-kunder" type="number" inputmode="numeric" min="0" value="20"><span>st</span></div></div>
+    </div>
+    <div class="card" aria-live="polite">
+      <h2>Resultat</h2>
+      <p class="lead">Så många kunder krävs för att kampanjen ska bära sig.</p>
+      <div class="result"><div class="label">Kunder för att gå jämnt upp</div><div class="value" id="c-out-be">–</div></div>
+      <ul class="rows">
+        <li><span>Försäljning som krävs för att gå jämnt upp</span><b id="c-out-sales">–</b></li>
+        <li><span>Försäljning per annonskrona som krävs</span><b id="c-out-roas-be">–</b></li>
+        <li><span>Försäljning med din gissning</span><b id="c-out-rev">–</b></li>
+        <li><span>Försäljning per annonskrona med din gissning</span><b id="c-out-roas">–</b></li>
+        <li><span>Resultat efter kampanjkostnad</span><b id="c-out-profit">–</b></li>
+      </ul>
+      <p class="note" id="c-note"></p>
+    </div>
+  </section>
+
+  <!-- 3. Leads -->
+  <section class="panel" id="panel-leads" role="tabpanel" aria-labelledby="tab-leads">
+    <div class="card">
+      <h2>Dina siffror</h2>
+      <p class="lead">Börja i målet och räkna baklänges. Ett lead är någon som hört av sig eller lämnat sina uppgifter.</p>
+      <div class="field"><label for="l-mal">Försäljningsmål från nya kunder</label>
+        <div class="input"><input id="l-mal" type="number" inputmode="decimal" min="0" value="300000"><span>kr</span></div></div>
+      <div class="field"><label for="l-affar">Snittaffär per ny kund</label>
+        <div class="input"><input id="l-affar" type="number" inputmode="decimal" min="0" value="15000"><span>kr</span></div></div>
+      <div class="field"><label for="l-close">Andel leads som blir kund</label>
+        <div class="input"><input id="l-close" type="number" inputmode="decimal" min="0" max="100" value="20"><span>%</span></div></div>
+      <div class="field"><label for="l-conv">Andel besökare som blir lead<span class="hint">På din webbplats. 1–3 % är vanligt.</span></label>
+        <div class="input"><input id="l-conv" type="number" inputmode="decimal" min="0" max="100" step="0.1" value="2"><span>%</span></div></div>
+      <div class="field"><label for="l-cpc">Kostnad per besök<span class="hint">Valfritt. Om du köper trafik via annonser.</span></label>
+        <div class="input"><input id="l-cpc" type="number" inputmode="decimal" min="0" step="0.5" value="8"><span>kr</span></div></div>
+    </div>
+    <div class="card" aria-live="polite">
+      <h2>Resultat</h2>
+      <p class="lead">Så mycket behöver du i varje steg för att nå målet.</p>
+      <div class="result"><div class="label">Leads du behöver</div><div class="value" id="l-out-leads">–</div></div>
+      <div class="funnel">
+        <div class="step"><div class="top"><span>Besökare</span><b id="l-out-visits">–</b></div><div class="bar" id="l-bar-visits"></div></div>
+        <div class="step"><div class="top"><span>Leads</span><b id="l-out-leads2">–</b></div><div class="bar" id="l-bar-leads"></div></div>
+        <div class="step"><div class="top"><span>Nya kunder</span><b id="l-out-kunder">–</b></div><div class="bar" id="l-bar-kunder"></div></div>
+      </div>
+      <ul class="rows">
+        <li><span>Annonsbudget om all trafik köps</span><b id="l-out-budget">–</b></li>
+        <li><span>Kostnad per lead</span><b id="l-out-cpl">–</b></li>
+        <li><span>Kostnad per ny kund</span><b id="l-out-cac">–</b></li>
+        <li><span>Annonskostnad som andel av målet</span><b id="l-out-share">–</b></li>
+      </ul>
+      <p class="note" id="l-note"></p>
+    </div>
+  </section>
+
+  <footer>
+    <p>Kalkylatorn ger en förenklad bild och ersätter inte rådgivning. Stäm av större beslut med din redovisningskonsult eller rådgivare.</p>
+    <p>Inget du fyller i sparas eller skickas någonstans. Allt räknas i din webbläsare.</p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var num = function (id) {
+    var v = parseFloat(String($(id).value).replace(',', '.'));
+    return isFinite(v) && v >= 0 ? v : 0;
+  };
+  var kr = function (n) { return isFinite(n) ? Math.round(n).toLocaleString('sv-SE') + ' kr' : '–'; };
+  var st = function (n) { return isFinite(n) ? Math.round(n).toLocaleString('sv-SE') + ' st' : '–'; };
+  var dec = function (n, d) { return n.toLocaleString('sv-SE', { minimumFractionDigits: d, maximumFractionDigits: d }); };
+  var set = function (id, text) { $(id).textContent = text; };
+  var note = function (id, text, warn) { var el = $(id); el.textContent = text; el.className = warn ? 'note warn' : 'note'; };
+
+  // Flikar
+  var tabs = document.querySelectorAll('[role="tab"]');
+  tabs.forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      tabs.forEach(function (t) {
+        var on = t === tab;
+        t.setAttribute('aria-selected', on ? 'true' : 'false');
+        $(t.getAttribute('aria-controls')).classList.toggle('active', on);
+      });
+    });
+  });
+
+  // 1. Vad får en ny kund kosta?
+  function kund() {
+    var order = num('k-order'), antal = num('k-antal'), ar = num('k-ar');
+    var marginal = Math.min(num('k-marginal'), 100) / 100;
+    var ratio = Math.max(num('k-ratio'), 1);
+    var ltv = order * antal * ar * marginal;
+    var cac = ltv / ratio;
+    var perManad = order * antal * marginal / 12;
+    var payback = perManad > 0 ? cac / perManad : NaN;
+
+    set('k-out-ltv', kr(ltv));
+    set('k-out-max', kr(ltv));
+    set('k-out-cac', kr(cac));
+    set('k-out-manad', kr(perManad));
+    set('k-out-payback', isFinite(payback) ? dec(payback, 1) + ' mån' : '–');
+
+    if (ltv <= 0) note('k-note', 'Fyll i alla fält för att se resultatet.', true);
+    else if (payback > 12) note('k-note', 'Det tar över ett år innan kunden betalat sin kostnad. Se till att kassan klarar väntan, eller sikta på en lägre kostnad per kund.', true);
+    else note('k-note', 'Kostar en ny kund mindre än ' + kr(cac) + ' har du god marginal. Över ' + kr(ltv) + ' förlorar du pengar på varje ny kund.', false);
+  }
+
+  // 2. Går kampanjen ihop?
+  function kampanj() {
+    var budget = num('c-budget'), order = num('c-order');
+    var marginal = Math.min(num('c-marginal'), 100) / 100;
+    var kunder = num('c-kunder');
+    var vinstPerKund = order * marginal;
+    var be = vinstPerKund > 0 ? Math.ceil(budget / vinstPerKund - 1e-9) : NaN;
+    var beSales = marginal > 0 ? budget / marginal : NaN;
+    var rev = kunder * order;
+    var profit = kunder * vinstPerKund - budget;
+
+    set('c-out-be', st(be));
+    set('c-out-sales', kr(beSales));
+    set('c-out-roas-be', marginal > 0 ? dec(1 / marginal, 2) + ' kr' : '–');
+    set('c-out-rev', kr(rev));
+    set('c-out-roas', budget > 0 ? dec(rev / budget, 2) + ' kr' : '–');
+    set('c-out-profit', (profit > 0 ? '+' : '') + kr(profit));
+
+    if (!isFinite(be)) note('c-note', 'Fyll i snittköp och marginal för att se resultatet.', true);
+    else if (profit < 0) note('c-note', 'Med din gissning går kampanjen ' + kr(-profit) + ' back på första köpet. Den kan ändå löna sig om kunderna kommer tillbaka och handlar igen.', true);
+    else note('c-note', 'Med din gissning ger kampanjen ' + kr(profit) + ' i överskott redan på första köpet.', false);
+  }
+
+  // 3. Hur många leads behöver jag?
+  function leads() {
+    var mal = num('l-mal'), affar = num('l-affar');
+    var close = Math.min(num('l-close'), 100) / 100;
+    var conv = Math.min(num('l-conv'), 100) / 100;
+    var cpc = num('l-cpc');
+    var kunder = affar > 0 ? Math.ceil(mal / affar - 1e-9) : NaN;
+    var antalLeads = close > 0 ? Math.ceil(kunder / close - 1e-9) : NaN;
+    var besok = conv > 0 ? Math.ceil(antalLeads / conv - 1e-9) : NaN;
+    var budget = besok * cpc;
+    var harBudget = cpc > 0 && isFinite(budget);
+
+    set('l-out-leads', st(antalLeads));
+    set('l-out-leads2', st(antalLeads));
+    set('l-out-kunder', st(kunder));
+    set('l-out-visits', st(besok));
+    set('l-out-budget', harBudget ? kr(budget) : '–');
+    set('l-out-cpl', harBudget && antalLeads > 0 ? kr(budget / antalLeads) : '–');
+    set('l-out-cac', harBudget && kunder > 0 ? kr(budget / kunder) : '–');
+    set('l-out-share', harBudget && mal > 0 ? dec(budget / mal * 100, 0) + ' %' : '–');
+
+    // Staplar på rotskala så att små steg fortfarande syns
+    var w = function (n) { return isFinite(n) && besok > 0 ? Math.max(Math.sqrt(n / besok) * 100, 2) + '%' : '2%'; };
+    $('l-bar-visits').style.width = isFinite(besok) ? '100%' : '2%';
+    $('l-bar-leads').style.width = w(antalLeads);
+    $('l-bar-kunder').style.width = w(kunder);
+
+    if (!isFinite(besok)) note('l-note', 'Fyll i alla fält för att se resultatet.', true);
+    else if (harBudget && budget > mal * 0.5) note('l-note', 'Annonskostnaden äter upp mer än hälften av försäljningsmålet. Försök höja andelen besökare som blir lead, eller hitta billigare trafik.', true);
+    else note('l-note', 'Du behöver ungefär ' + Math.ceil(antalLeads / 12).toLocaleString('sv-SE') + ' leads i månaden om målet gäller ett helt år.', false);
+  }
+
+  function all() { kund(); kampanj(); leads(); }
+  document.querySelectorAll('input').forEach(function (el) { el.addEventListener('input', all); });
+  all();
+})();
+</script>
+</body>
+</html>
